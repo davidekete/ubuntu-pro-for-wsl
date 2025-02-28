@@ -194,7 +194,19 @@ func (e executor) install(ctx context.Context, cmd *landscapeapi.Command_Install
 		return errors.New("already installed")
 	}
 
-	if err := e.cloudInit().WriteDistroData(cmd.GetId(), cmd.GetCloudinit()); err != nil {
+	r := ctx.Value(requestIDKey)
+	if r == nil || r == "" {
+		log.Infof(ctx, "Landscape: context doesn't have a requestID")
+		return
+	}
+
+	requestID, ok := r.(string)
+	if !ok {
+		log.Warningf(ctx, "Landscape: context's requestID is not a string: %v", r)
+		return
+	}
+
+	if err := e.cloudInit().WriteDistroData(cmd.GetId(), cmd.GetCloudinit(), requestID); err != nil {
 		return fmt.Errorf("skipped installation: %v", err)
 	}
 

@@ -4,6 +4,7 @@ package cloudinit
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -79,11 +80,28 @@ func (c CloudInit) writeAgentData() (err error) {
 	return nil
 }
 
+// metadata is a struct that serializes the instance ID as json
+type metadata struct {
+	InstanceID string `json:"instance-id"`
+}
+
 // WriteDistroData writes cloud-init user data to be used for a distro in particular.
-func (c CloudInit) WriteDistroData(distroName string, cloudInit string) error {
+func (c CloudInit) WriteDistroData(distroName string, cloudInit string, requestID string) error {
 	err := writeFileInDir(c.dataDir, distroName+".user-data", []byte(cloudInit))
 	if err != nil {
 		return fmt.Errorf("could not create distro-specific cloud-init file: %v", err)
+	}
+
+	if requestID == "" {
+		return nil
+	}
+	md, err := json.Marshal(metadata{InstanceID: requestID})
+	if err != nil {
+		return fmt.Errorf("could not marshal metadata: %v", err)
+	}
+	err = writeFileInDir(c.dataDir, distroName+".meta-data", md)
+	if err != nil {
+		return fmt.Errorf("could not create distro-specific metadata file: %v", err)
 	}
 
 	return nil
